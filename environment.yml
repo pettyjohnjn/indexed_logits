@@ -1,0 +1,14 @@
+name: indexed_logits
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch=2.2.0
+  - pytorch-cuda=12.1
+  - ninja
+  - pip
+  - pip:
+    - pytest  # optional, for running tests

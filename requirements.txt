@@ -1,0 +1,9 @@
+# Requirements for indexed_logits CUDA extension
+#
+# PyTorch with CUDA support is required.
+# Install PyTorch first from https://pytorch.org/get-started/locally/
+# Example: pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+torch>=2.0.0
+ninja  # speeds up compilation
+pytest  # optional, for testing
