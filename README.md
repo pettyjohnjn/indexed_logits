@@ -23,6 +23,10 @@ for:
 cd indexed_logits
 pip install .
 ```
+For an HPC-friendly installation use
+```
+pip install -e . --no-build-isolation
+```
 
 ### Option 2: Build in-place
 
