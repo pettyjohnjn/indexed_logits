@@ -1,0 +1,45 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled CUDA / C extensions (build artifacts)
+*.so
+*.o
+build/
+dist/
+*.egg-info/
+
+# Build tooling
+.ninja_deps
+.ninja_log
+*.ninja
+
+# Generated benchmark outputs (regenerable via benchmark_paper.py)
+benchmark_results/
+benchmark_results_extended/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Core dumps
+core.*
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# IDEs / tools
+.idea/
+.vscode/
+*.swp
+*~
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
