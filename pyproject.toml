@@ -1,3 +1,22 @@
 [build-system]
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
+
+# Package metadata and the CUDA extension build live in setup.py (a CUDAExtension
+# needs torch at build time). This file carries the lint config only.
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+# E501: line length handled separately.
+# N803/N806/N812/N816: math/CUDA-style notation (uppercase tensor names like
+# H, W, V, N, K as args/vars and `import ... as F`) is intentional and clearer.
+ignore = ["E501", "N803", "N806", "N812", "N816"]
+
+[tool.ruff.lint.per-file-ignores]
+# setup.py imports torch lazily, after a metadata-command guard, on purpose.
+"setup.py" = ["E402"]
+"build_inline.py" = ["E402"]

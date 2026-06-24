@@ -27,14 +27,14 @@ import csv
 import gc
 import json
 import statistics
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Optional
 
 import torch
 
 from indexed_logits import indexed_logits, indexed_logits_backward, indexed_logits_forward
-
 
 DTYPE_MAP = {
     "fp16": torch.float16,
@@ -130,7 +130,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_presets(dtype: str, suite: str) -> List[Config]:
+def get_presets(dtype: str, suite: str) -> list[Config]:
     if suite == "quick":
         return [
             Config("quick_small", N=1024, d=512, V=50257, k=32, dtype=dtype),
@@ -197,7 +197,7 @@ def reset_cuda_state() -> None:
     torch.cuda.synchronize()
 
 
-def make_inputs(cfg: Config, collision_vocab: Optional[int], requires_grad: bool) -> Dict[str, torch.Tensor]:
+def make_inputs(cfg: Config, collision_vocab: Optional[int], requires_grad: bool) -> dict[str, torch.Tensor]:
     dtype = DTYPE_MAP[cfg.dtype]
     device = "cuda"
 
@@ -213,7 +213,7 @@ def reference_forward(H: torch.Tensor, W: torch.Tensor, idx: torch.Tensor) -> to
     return (H.unsqueeze(1) * W[idx]).sum(dim=-1)
 
 
-def max_and_mean_abs_err(actual: torch.Tensor, expected: torch.Tensor) -> Dict[str, float]:
+def max_and_mean_abs_err(actual: torch.Tensor, expected: torch.Tensor) -> dict[str, float]:
     diff = (actual.float() - expected.float()).abs()
     return {
         "max_abs_err": diff.max().item(),
@@ -221,7 +221,7 @@ def max_and_mean_abs_err(actual: torch.Tensor, expected: torch.Tensor) -> Dict[s
     }
 
 
-def benchmark_forward(fn: Callable[[], torch.Tensor], warmup: int, iters: int) -> Dict[str, float]:
+def benchmark_forward(fn: Callable[[], torch.Tensor], warmup: int, iters: int) -> dict[str, float]:
     for _ in range(warmup):
         out = fn()
         del out
@@ -248,7 +248,7 @@ def benchmark_fwd_bwd(
     params: Iterable[torch.Tensor],
     warmup: int,
     iters: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     params = list(params)
 
     def zero_grads() -> None:
@@ -290,7 +290,7 @@ def benchmark_backward_only(
     grad_out: torch.Tensor,
     warmup: int,
     iters: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     for _ in range(warmup):
         grad_h, grad_w = indexed_logits_backward(H, W, idx, grad_out)
         del grad_h, grad_w
@@ -323,24 +323,24 @@ def fwd_bwd_tflops(cfg: Config, time_ms: float) -> float:
     return ops / (time_ms * 1e-3) / 1e12
 
 
-def fused_forward(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+def fused_forward(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
     return indexed_logits_forward(inputs["H"], inputs["W"], inputs["idx"])
 
 
-def fused_autograd(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+def fused_autograd(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
     return indexed_logits(inputs["H"], inputs["W"], inputs["idx"])
 
 
-def dense_forward(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+def dense_forward(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
     logits = inputs["H"] @ inputs["W"].T
     return torch.gather(logits, 1, inputs["idx"].to(torch.int64))
 
 
-def naive_subset_forward(inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
+def naive_subset_forward(inputs: dict[str, torch.Tensor]) -> torch.Tensor:
     return reference_forward(inputs["H"], inputs["W"], inputs["idx"].to(torch.int64))
 
 
-def correctness_check(cfg: Config, collision_vocab: Optional[int], seed: int) -> List[Result]:
+def correctness_check(cfg: Config, collision_vocab: Optional[int], seed: int) -> list[Result]:
     reset_cuda_state()
     torch.manual_seed(seed)
     inputs = make_inputs(cfg, collision_vocab=collision_vocab, requires_grad=True)
@@ -429,7 +429,7 @@ def run_one_method(
     cfg: Config,
     method: str,
     phase: str,
-    fn_builder: Callable[[Dict[str, torch.Tensor]], torch.Tensor],
+    fn_builder: Callable[[dict[str, torch.Tensor]], torch.Tensor],
     warmup: int,
     iters: int,
     collision_vocab: Optional[int],
@@ -573,7 +573,7 @@ def print_section(title: str) -> None:
     print("-" * len(title))
 
 
-def print_results(results: List[Result]) -> None:
+def print_results(results: list[Result]) -> None:
     current_key = None
     for result in results:
         key = (result.config, result.collision_vocab)
@@ -594,7 +594,7 @@ def print_results(results: List[Result]) -> None:
         )
 
 
-def metric_stats(values: List[Optional[float]]) -> Tuple[Optional[float], Optional[float]]:
+def metric_stats(values: list[Optional[float]]) -> tuple[Optional[float], Optional[float]]:
     clean = [v for v in values if v is not None]
     if not clean:
         return None, None
@@ -603,8 +603,8 @@ def metric_stats(values: List[Optional[float]]) -> Tuple[Optional[float], Option
     return statistics.mean(clean), statistics.stdev(clean)
 
 
-def summarize_results(results: List[Result]) -> List[SummaryResult]:
-    grouped: Dict[Tuple[str, str, str, str, int, int, int, int, str, Optional[int]], List[Result]] = {}
+def summarize_results(results: list[Result]) -> list[SummaryResult]:
+    grouped: dict[tuple[str, str, str, str, int, int, int, int, str, Optional[int]], list[Result]] = {}
     for result in results:
         key = (
             result.config,
@@ -620,7 +620,7 @@ def summarize_results(results: List[Result]) -> List[SummaryResult]:
         )
         grouped.setdefault(key, []).append(result)
 
-    summaries: List[SummaryResult] = []
+    summaries: list[SummaryResult] = []
     for key, group in grouped.items():
         time_mean, time_std = metric_stats([g.time_ms for g in group])
         alloc_mean, alloc_std = metric_stats([g.peak_alloc_mb for g in group])
@@ -660,8 +660,8 @@ def summarize_results(results: List[Result]) -> List[SummaryResult]:
 
 
 def save_outputs(
-    results: List[Result],
-    summaries: List[SummaryResult],
+    results: list[Result],
+    summaries: list[SummaryResult],
     json_path: Optional[Path],
     csv_path: Optional[Path],
     summary_json_path: Optional[Path],
@@ -697,7 +697,7 @@ def main() -> None:
 
     seeds = [args.seed] if args.seeds is None else [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
     presets = get_presets(args.dtype, args.suite)
-    results: List[Result] = []
+    results: list[Result] = []
 
     print(f"GPU: {torch.cuda.get_device_name(0)}")
     print(f"PyTorch: {torch.__version__}")
