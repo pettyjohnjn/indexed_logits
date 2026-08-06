@@ -25,6 +25,11 @@ from dataclasses import dataclass
 
 import torch
 
+try:
+    import pytest
+except ImportError:
+    pytest = None
+
 # Try to import the extension
 try:
     from indexed_logits import (
@@ -37,6 +42,14 @@ except ImportError as e:
     print(f"Warning: Could not import extension: {e}")
     print("Run 'python setup.py build_ext --inplace' first.")
     EXTENSION_AVAILABLE = False
+
+# Every test allocates CUDA tensors directly, so under pytest the whole module
+# is skipped unless a GPU and the built extension are both present.
+if pytest is not None:
+    pytestmark = [
+        pytest.mark.skipif(not torch.cuda.is_available(), reason="requires a CUDA GPU"),
+        pytest.mark.skipif(not EXTENSION_AVAILABLE, reason="indexed_logits extension not built"),
+    ]
 
 
 # =============================================================================
